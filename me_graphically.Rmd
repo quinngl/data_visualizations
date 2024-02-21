@@ -1,0 +1,91 @@
+---
+title: "Me, Graphically"
+author: "Quinn Glovier"
+date: "`r Sys.Date()`"
+output: rmdformats::downcute
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading Packages
+```{r, warning=FALSE, message=FALSE}
+library(rmdformats)
+library(tidyverse)
+library(zoo)
+library(plotly)
+```
+
+## Loading the dataset
+```{r}
+movies <- read_csv("movies.csv", show_col_types = FALSE)
+head(movies)
+```
+
+## Creating the plot
+```{r, message=FALSE}
+#Assigning colors for the different genres of movies
+color_list <- c("#ef233c", "#fdc500", "#70e000", "#788bff" ,"#bc00dd", "#f72585")
+
+#Formatting the 3 axes
+x <- list(title = "Date Watched", #Setting the name of the axis
+          gridcolor='white', #Setting the grid color
+          zerolinecolor='white', #Setting the zero line color to match the grid color
+          showbackground=TRUE, #Affirming that we want to see the background color we pick 
+          backgroundcolor='#003049',# Setting the background color
+          titlefont = list(size = 15, #axis title size
+                           family = "Georgia", #axis title font
+                           color = "white"),
+          tickfont = list(size = 10, #tick font size
+                          family = "Georgia", #tick font
+                          color = "white")) #tick color
+
+#Repeating the process for the y and z axes
+y <- list(title = "Rating (out of 5)", gridcolor='white', zerolinecolor='white', showbackground=TRUE, backgroundcolor='#003049',
+          titlefont = list(size = 15, family = "Georgia", color = "white"), 
+          tickfont = list(size = 12, family = "Georgia", color = "white"))
+z <- list(title = "Length (minutes)", gridcolor='white', zerolinecolor='white', showbackground=TRUE, backgroundcolor='#003049',
+          titlefont = list(size = 15, family = "Georgia", color = "white"), 
+          tickfont = list(size = 12, family = "Georgia", color = "white"))
+
+#Creating the plot with plot_ly
+fig <- plot_ly(movies, #data set to be used
+               x = ~`Date Watched`, #x axis
+               y = ~`Rating (out of 5)`, #y axis
+               z = ~Length, #z axis
+               color = ~Genre, #what the points will be colored by
+               colors = color_list, #setting the list of colors to be used for the scatter points
+               type = 'scatter3d', #type of plot
+               alpha = 0.8, #opacity of the scatter points
+               marker = list(symbol = "circle"), #setting the shape of the points
+               text = ~paste('Movie:' = Movie) #Adding the movie title to the hovertext
+               )
+#Customizing the layout of the graph
+fig <- fig %>% layout(title = list(text = "Movies Watched During the 2023-2024 School Year", #title text
+                                   font = list(size = 25, #title size
+                                               family = "Academy Engraved LET",
+                                               color = "white")), #title font
+                      margin = 0, #setting margins to 0
+                      scene = list(xaxis = x, yaxis = y, zaxis = z), #applying the axes customizations generated earlier
+                      paper_bgcolor = "#003049", #background color
+                      legend = list(font = list(
+                        family = "Georgia", #legend font
+                        size = 12, #legend font size
+                        color = "white"), #text color
+                        bgcolor = "#003049", #background color
+                        title = list(text = "Genre:"),
+                        bordercolor = "white",
+                        borderwidth = 2.5)) #legend title text
+#Show the result! :)
+fig
+```
+
+## Design Process
+When assigned the project of visualizing my identity through a graphic, I knew that I wanted to show more of who I am as a person rather than simply some aspect of my daily life. Movies have always served as a foundational aspect of who I am. My favorite films have influenced my style (clothing and home decor), the music I listen to, and even the books I read for pleasure. While, as a graduate student, I do not have nearly as much time to watch movies as I used to, I chose to chart out the movies I have watched this school year to showcase my preferences and changing tastes throughout the months. 
+I chose to create a 3-dimensional graph with 3 axes: the date I watched the movie (x-axis), my rating of the movie from 1 to 5 (y-axis), and the length of the movie in minutes (z-axis). Additionally, the points in the graph are color-coded by the genre of the movie. I believe that adding length as a third dimension and color-coding my points adds more context to my rating of the movie as these features highlight my personal preferences. For example, while I do not have a single “drama” film rated below ⅗, I only have one romance movie logged with a score of only 2.5/5. These added features also reflect how my preferences for movies change with the seasons as well. Another example: I have a considerably larger number of horror movies logged during August through October because my favorite season is Halloween; in contrast, I watched longer action movies during the holiday season because I had more free time to do so during the winter holiday. 
+One of my favorite features of this graph is the hover-text option built into the graph. Admittedly, viewing a 3d graph can be moderately overwhelming if one is not sure what they are supposed to be gathering from the visualization, but the hover-text provides the specific information of each point. When dragging the mouse over a point on the graph, the hover text displays the title of the movie along with the values for each axis associated with that point, giving more context to each piece of data.
+For the color scheme of the graph, I chose to use a dark blue-gray background to make the vibrancy of the scatter points “pop” against the darkness. This color choice also reminded me of the darkness of a movie theater in contrast to the vibrant colors on the screen, fitting the theme of the visualization well. I colored all of the text and graphical aspects in white to make them visible against the dark background, but not clash with the colors of the scatter points.
+An aspect I played safe for this assignment was my mode of composition. I created this graph in R-Studio because I was previously taught how to make 3d graphs in another class; I already knew the foundations of the code I needed to generate for my desired outcome. While I am excited to learn more about the tools we will use like Observable and Adobe Illustrator, I knew it would be “easier” to create my graph in Rstudio as I am very comfortable with the platform already.
+The biggest challenge for the assignment was implementing my stylistic choices and finding a color palette that I was satisfied with. This is primarily because I can be a somewhat indecisive person, but also because RStudio is a bit limited aesthetically. Figuring out how to format the colors of the background, change the ticks, and pick new fonts took a good amount of research online, as I had to write my code to specifically work for the program I was using within RStudio (plotly) AND for a 3d scatter plot at that. I am glad I had the patience to research how to format the graph exactly as I liked, and the result is almost identical to how I visualized the graph in my head.
+
