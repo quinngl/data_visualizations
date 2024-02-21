@@ -1,0 +1,205 @@
+---
+title: "NBA Clustering Report"
+author: "Quinn Glovier"
+date: "`r Sys.Date()`"
+output: rmdformats::downcute
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE}
+#Required Packages
+library(tidyverse)
+library(plotly)
+library(htmltools)
+library(devtools)
+library(caret)
+library(NbClust)
+```
+
+### Report
+
+The goal of my data analysis was to find players that had high performance statistics compared to their salary on average. To classify by salary, I grouped the players into "Above Average", "Average", and "Below Average" based on the bottom 25% and top 75% thresholds for salaries. I chose to measure performance were Games Played, Games Started, Minutes Played, Field Goals, 3 Point Shots, 2 Point Shots, Free Throws, Total Rebounds, Assists, Turnovers, and Points Total.
+
+When running the model, I grouped the data into three clusters, with Cluster 1 having the highest performing players and Cluster 3 having the lowest performing players. When evaluating the data with the "Elbow Chart" method and the "NBClusters" method, I found that 2 and 3 clusters were the most reccomended numbers, but 3 performed better. 
+
+When evaluating the results, the 3D graph was most helpful to me. I chose to review the players based on Minutes Played (shows how valuable of a player they are), 3 Point Shots (an offensive statistic), and Turnovers (a defensive statistic), so that the review process was more holistic and looked at different performance aspects. I selected below-average and average paid players in Cluster 1 to find high performing players with lower salaries. The players I picked are:
+
+
+1. Jakob Poeltl: This player had  around 29 minutes of play time, which was shorter than some of the other high-performing players in the average salary group. He had 6 2-point shots and 1.6 turnovers, showing strong offensive capabilities.
+
+
+2. Cade Cunningham: This player was also within the average salary group and played on average around 32.6 minutes. He had 4.9 for 2 Point Shots and 3.7 Turnovers, which was one of the highest turnover scores, showing a strong defensive ability.
+
+
+3. Herbert Jones: This was one of, if not the best player in the below-average salary category, meaning he would probably be less expensive to recruit compared to the other two players. He had an average playing time of around 29.9 minutes, 2.3 2 Point Shots, and 1.8 Turnovers. Looking at his stats in the original dataset, Jones also had 3.8 Total Rebounds, and 9 Total Points, showing potential.
+
+
+```{r, include = FALSE}
+#Data Cleaning
+
+#Loading the data
+salaries <- read_csv("nba_salaries_22.csv")
+perf <- read_csv("NBA_Perf_22.csv")
+View(salaries)
+View(perf)
+
+#Merging the data
+nba <- inner_join(salaries, perf)
+view(nba)
+
+#Removing the NA values
+summary(is.na(nba))
+nba <- nba[complete.cases(nba),]
+summary(is.na(nba))
+
+#Remove Duplicates
+nba$Salary <- gsub("[^[:alnum:]]", "", nba$Salary)
+nba$Salary <- as.numeric(nba$Salary)
+nba <- group_by(nba, Player)%>%
+  summarise_each(funs(mean))
+View(nba)
+nba <- nba[, -c(3,5)]
+str(nba)
+
+
+#Creating classifcations of players by salary
+#First, dividing the table by 100, since removing the special characters added the "cents" of the salary as dollars
+nba$Salary = nba$Salary/100
+#Splitting the data into three categories based on the salary. Players in the middle 50% are classified as having an "average" salary, while the bottom 25% is below average, and the top 25% is above average.
+fivenum(nba$Salary)
+salary_labels <- c("Below Average", "Average", "Above Average")
+nba <- mutate(nba, S_Rating = case_when(
+  nba$Salary <= 2101800 ~ salary_labels[1],
+  nba$Salary >2101800 & nba$Salary<= 13545000 ~ salary_labels[2],
+  nba$Salary > 13545000 ~ salary_labels [3]
+))
+view(nba)
+
+
+#Select the variables to be included in the cluster 
+#Choosing Games Played, Total Rebounds, and 3-Point Shots
+nba1 <- nba[, c("G", "GS", "MP", "FG", "3P", "2P", "FT", "TRB", "AST", "TOV", "PTS")]
+view(nba1)
+normalize <- function(x){
+ (x - min(x)) / (max(x) - min(x))
+}
+
+nba1 <- normalize(nba1)
+view(nba1)
+```
+
+```{r, include = FALSE}
+set.seed(2020)
+kmeans_obj_nba = kmeans(nba1, centers = 3, 
+                        algorithm = "Lloyd")
+
+kmeans_obj_nba
+```
+
+### 2D Graph Showing how Minutes Played and 3 Point Shots Correlate to Salary
+
+```{r, echo = FALSE, eval = TRUE}
+#2D Graph
+clusters_nba= as.factor(kmeans_obj_nba$cluster)
+
+nba$S_Rating <- as.factor(nba$S_Rating)
+ggplot(nba, aes(x = MP, 
+                            y = `3P`,
+                            color = S_Rating,  
+                            shape = clusters_nba)) + 
+  geom_point(size = 6) +
+  ggtitle("Minutes Played vs 3 Point Shots in the NBA classified by Salary") +
+  xlab("Minutes Played") +
+  ylab("Count of 3 Point Shots") +
+  scale_shape_manual(name = "Cluster", 
+                     labels = c("Cluster 1", "Cluster 2", "Cluster 3"),
+                     values = c("1", "2", "3")) +
+  scale_color_manual(name = "Salary",
+                     labels = c("Above Average", "Average", "Below Average"),
+                     values = c("#2FBF71", "#8EE3F5", "#DD403A")) +
+  theme_light()
+```
+
+### 3D Graph Showing How Minutes Played, 3 Point Shots, and Turnovers Affect Salary
+
+```{r, echo = FALSE, eval = TRUE}
+nba2 <- mutate(nba, clusters = clusters_nba)
+view(nba2)
+
+fig <- plot_ly(nba2, 
+               type = "scatter3d",
+               mode="markers",
+               symbol = ~clusters,
+               x = ~MP, 
+               y = ~`3P`, 
+               z = ~`TRB`,
+               color = ~S_Rating,
+               colors = c("#2FBF71", "#8EE3F5", "#DD403A"),
+               alpha = 0.8,
+               text = ~paste('Player:', Player))%>%
+  layout(title = "Minutes Played, 3 Point Shots, and Total Rebounds")
+
+
+fig
+```
+### "Elbow" Graph Reccomending the Number of Clusters to be Used
+
+```{r, echo = FALSE, eval= TRUE}
+
+explained_variance <- function(data_in, k){
+  
+  # Running the kmeans algorithm.
+  set.seed(1)
+  kmeans_obj = kmeans(data_in, centers = k, algorithm = "Lloyd", iter.max = 30)
+  
+  # Variance accounted for by clusters:
+  # var_exp = intercluster variance / total variance
+  var_exp = kmeans_obj$betweenss / kmeans_obj$totss
+  var_exp  
+}
+
+
+
+explained_var_nba <-sapply(1:10, explained_variance, data_in = nba1)
+
+elbow_data_nba <- data.frame(k = 1:10, explained_var_nba)
+
+ggplot(elbow_data_nba, 
+       aes(x = k,  
+           y = explained_var_nba)) + 
+  geom_point(size = 4) +
+  geom_line(size = 1) + 
+  xlab('k') + 
+  ylab('Inter-cluster Variance / Total Variance') + 
+  theme_light()
+
+```
+
+
+
+```{r, include = FALSE}
+nbclust_obj_nba = NbClust(data = nba1, method = "kmeans")
+
+nbclust_obj_nba
+
+```
+
+### Graph Showing What Number Of Clusters is best for analyzing the data
+```{r, echo = FALSE, eval = TRUE}
+freq_k_nba = nbclust_obj_nba$Best.nc[1,]
+freq_k_nba = data.frame(freq_k_nba)
+
+ggplot(freq_k_nba,
+       aes(x = freq_k_nba)) +
+  geom_bar() +
+  scale_x_continuous(breaks = seq(0, 15, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 12, by = 1)) +
+  labs(x = "Number of Clusters",
+       y = "Count",
+       title = "Cluster Analysis")
+```
+
